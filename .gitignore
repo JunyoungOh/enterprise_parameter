@@ -1,0 +1,5 @@
+# local state, never committed
+spend.json
+config
+*.tmp
+.spend.*

@@ -1,0 +1,7 @@
+# claude-budget-gauge config — copied to ~/.claude/budget-gauge/config by install.sh
+# Your allotment in USD. The gauge fills to 100% at this amount.
+BUDGET=100
+
+# Optional overrides:
+# CURRENCY_SYMBOL=$
+# BAR_WIDTH=10
