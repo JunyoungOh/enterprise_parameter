@@ -64,6 +64,33 @@ test_unknown_model_hidden() {
 test_tier2_opus
 test_unknown_model_hidden
 
+# ---- Test: repeated calls for same session don't double-count ----
+test_idempotent() {
+  echo "test_idempotent"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  local json='{"session_id":"sX","cost":{"total_cost_usd":10.00}}'
+  run_gauge "$d" "$json" >/dev/null
+  run_gauge "$d" "$json" >/dev/null
+  local out; out=$(run_gauge "$d" "$json")   # 3rd call, still $10 total
+  assert_contains "idempotent total stays \$10" '$10.00/$100' "$out"
+  assert_contains "10%" '10%' "$out"
+  rm -rf "$d"
+}
+
+# ---- Test: distinct sessions accumulate ----
+test_multi_session() {
+  echo "test_multi_session"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  run_gauge "$d" '{"session_id":"a","cost":{"total_cost_usd":30.00}}' >/dev/null
+  local out; out=$(run_gauge "$d" '{"session_id":"b","cost":{"total_cost_usd":20.00}}')
+  assert_contains "30+20 = \$50 total" '$50.00/$100' "$out"
+  assert_contains "50%" '50%' "$out"
+  rm -rf "$d"
+}
+
+test_idempotent
+test_multi_session
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
