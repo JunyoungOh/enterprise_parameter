@@ -91,6 +91,63 @@ test_multi_session() {
 test_idempotent
 test_multi_session
 
+# ---- Test: BUDGET unset -> empty ----
+test_no_budget() {
+  echo "test_no_budget"
+  local d; d=$(new_dir)   # no config written
+  local out; out=$(run_gauge "$d" '{"session_id":"s","cost":{"total_cost_usd":5}}')
+  assert_empty "no budget -> empty" "$out"
+  rm -rf "$d"
+}
+
+# ---- Test: corrupt spend.json recovered ----
+test_corrupt_spend() {
+  echo "test_corrupt_spend"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  printf 'not json{{' > "$d/spend.json"
+  local out; out=$(run_gauge "$d" '{"session_id":"s","cost":{"total_cost_usd":5.00}}')
+  assert_contains "recovers from corrupt spend" '$5.00/$100' "$out"
+  rm -rf "$d"
+}
+
+# ---- Test: overflow >100% clamps bar, shows real % + red ----
+test_overflow() {
+  echo "test_overflow"
+  local d; d=$(new_dir); set_budget 50 "$d"
+  local out; out=$(run_gauge "$d" '{"session_id":"s","cost":{"total_cost_usd":54.00}}')
+  assert_contains "shows 108%" '108%' "$out"
+  assert_contains "red icon at overflow" '🔴' "$out"
+  assert_contains "bar fully filled" '▓▓▓▓▓▓▓▓▓▓' "$out"
+  rm -rf "$d"
+}
+
+# ---- Test: --segment has no trailing newline ----
+test_segment_no_newline() {
+  echo "test_segment_no_newline"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  local out; out=$(run_gauge "$d" '{"session_id":"s","cost":{"total_cost_usd":5.00}}' --segment)
+  # Last byte of raw --segment output must NOT be a newline (0a).
+  local last; last=$(BUDGET_GAUGE_DIR="$d" printf '%s' '{"session_id":"s","cost":{"total_cost_usd":5.00}}' | BUDGET_GAUGE_DIR="$d" bash "$GAUGE" --segment | od -An -tx1 | tr -d ' \n' | tail -c2)
+  if [ "$last" != "0a" ]; then PASS=$((PASS+1)); echo "  ok: segment has no trailing newline"; else FAIL=$((FAIL+1)); echo "  FAIL: segment ended with newline"; fi
+  assert_contains "segment still shows gauge" '$5.00/$100' "$out"
+  rm -rf "$d"
+}
+
+# ---- Test: warning icon at 75-89% ----
+test_warn_icon() {
+  echo "test_warn_icon"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  local out; out=$(run_gauge "$d" '{"session_id":"s","cost":{"total_cost_usd":80.00}}')
+  assert_contains "orange at 80%" '🟠' "$out"
+  rm -rf "$d"
+}
+
+test_no_budget
+test_corrupt_spend
+test_overflow
+test_segment_no_newline
+test_warn_icon
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
