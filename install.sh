@@ -15,19 +15,20 @@ else
 fi
 [ -f "$DIR/spend.json" ] || echo '{}' > "$DIR/spend.json"
 
-CMD="bash $REPO/budget-gauge.sh"
+CMD="bash '$REPO/budget-gauge.sh'"
 if [ -f "$SETTINGS" ] && jq -e '.statusLine' "$SETTINGS" >/dev/null 2>&1; then
   echo
   echo "⚠ You already have a statusLine configured. Not overwriting it."
   echo "  To show the gauge alongside your existing statusline, append this in your"
   echo "  statusline script (it reads the same stdin):"
   echo
-  echo "      gauge=\$(printf '%s' \"\$input\" | $REPO/budget-gauge.sh --segment)"
+  echo "      gauge=\$(printf '%s' \"\$input\" | '$REPO/budget-gauge.sh' --segment)"
   echo "      printf '%s │ %s\\n' \"\$your_line\" \"\$gauge\""
   echo
 else
   mkdir -p "$HOME/.claude"
   tmp=$(mktemp)
+  trap 'rm -f "$tmp"' EXIT
   if [ -f "$SETTINGS" ]; then base=$(cat "$SETTINGS"); else base='{}'; fi
   if printf '%s' "$base" | jq --arg c "$CMD" '.statusLine = {type:"command", command:$c}' > "$tmp" && mv -f "$tmp" "$SETTINGS"; then
     echo "• Set statusLine.command in $SETTINGS"

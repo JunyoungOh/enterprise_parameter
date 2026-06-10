@@ -9,8 +9,10 @@
 
 ## Install
 
+> Replace `<your-org>` with the actual GitHub org/user once published.
+
 ```bash
-git clone https://github.com/yourname/claude-budget-gauge.git
+git clone https://github.com/<your-org>/claude-budget-gauge.git
 cd claude-budget-gauge
 bash install.sh
 ```
@@ -44,12 +46,11 @@ BUDGET=100
 When you want to start a new budget period, reset accumulated spend:
 
 ```bash
-# Interactive prompt
-bash budget-reset.sh
-
-# Non-interactive (e.g. in a script or cron job); -y is a short alias for --yes
-bash budget-reset.sh --yes   # or: bash budget-reset.sh -y
+bash ~/path/to/claude-budget-gauge/budget-reset.sh        # prompts y/N
+bash ~/path/to/claude-budget-gauge/budget-reset.sh --yes  # or -y, no prompt
 ```
+
+Run it from wherever the repo is cloned (use the full path, or add the script to your PATH / a shell alias).
 
 This clears `~/.claude/budget-gauge/spend.json`, resetting the gauge to $0.
 
@@ -62,6 +63,8 @@ This clears `~/.claude/budget-gauge/spend.json`, resetting the gauge to $0.
 gauge=$(printf '%s' "$input" | /path/to/budget-gauge.sh --segment)
 printf '%s │ %s\n' "$your_line" "$gauge"
 ```
+
+Here `$input` is the stdin JSON your statusline script captures at the top with `input=$(cat)`.
 
 In segment mode the script reads the same `statusLine` stdin JSON as the full mode — no extra plumbing needed.
 
