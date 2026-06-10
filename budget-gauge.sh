@@ -15,7 +15,7 @@ emit() { # honor --segment (no trailing newline) vs full (newline)
   if [ "$MODE" = "segment" ]; then printf '%s' "$1"; else printf '%s\n' "$1"; fi
 }
 
-# jq is required; without it, degrade silently.
+# jq is required; without it, warn to stderr and degrade (no stdout).
 command -v jq >/dev/null 2>&1 || { echo "budget-gauge: jq not found" >&2; exit 0; }
 
 input=$(cat)
@@ -52,18 +52,21 @@ fi
 
 # --- idempotent spend update: overwrite this session's entry, then sum ---
 mkdir -p "$DIR"
-[ -f "$SPEND" ] && jq -e . "$SPEND" >/dev/null 2>&1 || echo '{}' > "$SPEND"
-tmp=$(mktemp "$DIR/.spend.XXXXXX")
-if jq --arg k "$key" --argjson v "$this_cost" '.[$k] = $v' "$SPEND" > "$tmp" 2>/dev/null; then
+if ! { [ -f "$SPEND" ] && jq -e . "$SPEND" >/dev/null 2>&1; }; then
+  echo '{}' > "$SPEND"
+fi
+tmp=$(mktemp "$DIR/.spend.XXXXXX" 2>/dev/null) || tmp=""
+if [ -n "$tmp" ] && jq --arg k "$key" --argjson v "$this_cost" '.[$k] = $v' "$SPEND" > "$tmp" 2>/dev/null; then
   mv -f "$tmp" "$SPEND"
 else
-  rm -f "$tmp"
+  [ -n "$tmp" ] && rm -f "$tmp"
 fi
 total=$(jq -r 'to_entries | map(.value) | add // 0' "$SPEND" 2>/dev/null)
 [ -z "$total" ] && total=0
 
 # --- render ---
 pct=$(awk -v t="$total" -v b="$BUDGET" 'BEGIN{ printf "%.0f", (b>0 ? t/b*100 : 0) }')
+[ -z "$pct" ] && exit 0
 filled=$(awk -v p="$pct" -v w="$BAR_WIDTH" 'BEGIN{ f=int(p/100*w+0.5); if(f>w)f=w; if(f<0)f=0; print f }')
 empty=$(( BAR_WIDTH - filled ))
 bar=""; for ((i=0;i<filled;i++)); do bar="${bar}▓"; done; for ((i=0;i<empty;i++)); do bar="${bar}░"; done

@@ -148,6 +148,27 @@ test_overflow
 test_segment_no_newline
 test_warn_icon
 
+# ---- Test: malformed stdin JSON -> empty, no crash ----
+test_malformed_json() {
+  echo "test_malformed_json"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  local out; out=$(run_gauge "$d" 'not json at all {{{')
+  assert_empty "malformed json -> empty" "$out"
+  rm -rf "$d"
+}
+
+# ---- Test: model field absent + no cost -> hidden ----
+test_no_model_no_cost() {
+  echo "test_no_model_no_cost"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  local out; out=$(run_gauge "$d" '{"session_id":"s","context_window":{"total_input_tokens":1000000}}')
+  assert_empty "no model + no cost -> empty" "$out"
+  rm -rf "$d"
+}
+
+test_malformed_json
+test_no_model_no_cost
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
