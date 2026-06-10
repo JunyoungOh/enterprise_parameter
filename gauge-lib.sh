@@ -3,6 +3,9 @@
 # Sourced, not executed. No side effects, no policy (callers decide
 # empty-output / messages / trailing newline).
 
+# Refuse to run as a standalone script — this file only provides functions.
+[ "${BASH_SOURCE[0]}" = "${0}" ] && { echo "gauge-lib.sh is meant to be sourced, not executed." >&2; exit 1; }
+
 # gauge_render <total> <budget> [bar_width=10] [currency_symbol=$]
 #   echoes "<icon> <sym><total.2f>/<sym><budget> <bar> <pct>%" with NO trailing newline.
 #   returns 1 (no output) if pct can't be computed (e.g. awk missing).

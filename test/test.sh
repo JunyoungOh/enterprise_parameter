@@ -218,7 +218,9 @@ test_gauge_render_basic() {
 test_gauge_render_no_newline() {
   echo "test_gauge_render_no_newline"
   . "$HERE/../gauge-lib.sh"
-  local last; last=$(gauge_render 5 100 | od -An -tx1 | tr -d ' \n' | tail -c2)
+  local out; out=$(gauge_render 5 100)
+  assert_contains "render produces output" '$5.00/$100' "$out"
+  local last; last=$(printf '%s' "$out" | od -An -tx1 | tr -d ' \n' | tail -c2)
   if [ "$last" != "0a" ]; then PASS=$((PASS+1)); echo "  ok: gauge_render emits no trailing newline"; else FAIL=$((FAIL+1)); echo "  FAIL: gauge_render added a newline"; fi
 }
 test_gauge_total() {
