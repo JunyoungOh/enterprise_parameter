@@ -206,6 +206,36 @@ test_reset_interactive_abort() {
 test_reset_interactive_yes
 test_reset_interactive_abort
 
+# ---- gauge-lib unit tests ----
+# Source the lib into the CURRENT shell (NOT a subshell) so assert_*/PASS/FAIL propagate.
+test_gauge_render_basic() {
+  echo "test_gauge_render_basic"
+  . "$HERE/../gauge-lib.sh"
+  assert_eq "render 23.4/100" '💰 $23.40/$100 ▓▓░░░░░░░░ 23%' "$(gauge_render 23.4 100)"
+  assert_eq "render warn 80/100" '🟠 $80.00/$100 ▓▓▓▓▓▓▓▓░░ 80%' "$(gauge_render 80 100)"
+  assert_eq "render overflow 54/50" '🔴 $54.00/$50 ▓▓▓▓▓▓▓▓▓▓ 108%' "$(gauge_render 54 50)"
+}
+test_gauge_render_no_newline() {
+  echo "test_gauge_render_no_newline"
+  . "$HERE/../gauge-lib.sh"
+  local last; last=$(gauge_render 5 100 | od -An -tx1 | tr -d ' \n' | tail -c2)
+  if [ "$last" != "0a" ]; then PASS=$((PASS+1)); echo "  ok: gauge_render emits no trailing newline"; else FAIL=$((FAIL+1)); echo "  FAIL: gauge_render added a newline"; fi
+}
+test_gauge_total() {
+  echo "test_gauge_total"
+  . "$HERE/../gauge-lib.sh"
+  local d; d=$(new_dir)
+  printf '%s' '{"a":30,"b":20.5}' > "$d/spend.json"
+  assert_eq "sum two entries" '50.5' "$(gauge_total "$d/spend.json")"
+  assert_eq "missing file -> 0" '0' "$(gauge_total "$d/nope.json")"
+  printf 'broken{{' > "$d/bad.json"
+  assert_eq "corrupt -> 0" '0' "$(gauge_total "$d/bad.json")"
+  rm -rf "$d"
+}
+test_gauge_render_basic
+test_gauge_render_no_newline
+test_gauge_total
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
