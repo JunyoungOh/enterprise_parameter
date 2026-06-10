@@ -16,7 +16,7 @@ fi
 [ -f "$DIR/spend.json" ] || echo '{}' > "$DIR/spend.json"
 
 CMD="bash $REPO/budget-gauge.sh"
-if [ -f "$SETTINGS" ] && jq -e '.statusLine.command' "$SETTINGS" >/dev/null 2>&1; then
+if [ -f "$SETTINGS" ] && jq -e '.statusLine' "$SETTINGS" >/dev/null 2>&1; then
   echo
   echo "⚠ You already have a statusLine configured. Not overwriting it."
   echo "  To show the gauge alongside your existing statusline, append this in your"
@@ -29,7 +29,12 @@ else
   mkdir -p "$HOME/.claude"
   tmp=$(mktemp)
   if [ -f "$SETTINGS" ]; then base=$(cat "$SETTINGS"); else base='{}'; fi
-  printf '%s' "$base" | jq --arg c "$CMD" '.statusLine = {type:"command", command:$c}' > "$tmp" && mv -f "$tmp" "$SETTINGS"
-  echo "• Set statusLine.command in $SETTINGS"
+  if printf '%s' "$base" | jq --arg c "$CMD" '.statusLine = {type:"command", command:$c}' > "$tmp" && mv -f "$tmp" "$SETTINGS"; then
+    echo "• Set statusLine.command in $SETTINGS"
+  else
+    rm -f "$tmp"
+    echo "ERROR: Failed to write $SETTINGS — check it is valid JSON and writable." >&2
+    exit 1
+  fi
 fi
 echo "Done. Open a new Claude Code session to see the gauge."

@@ -9,5 +9,9 @@ if [ "${1:-}" != "--yes" ] && [ "${1:-}" != "-y" ]; then
   case "$ans" in y|Y|yes|YES) ;; *) echo "Aborted."; exit 0 ;; esac
 fi
 mkdir -p "$DIR"
-echo '{}' > "$SPEND"
-echo "Budget gauge reset. Spend is now \$0."
+if echo '{}' > "$SPEND"; then
+  echo "Budget gauge reset. Spend is now \$0."
+else
+  echo "ERROR: Could not write to $SPEND" >&2
+  exit 1
+fi

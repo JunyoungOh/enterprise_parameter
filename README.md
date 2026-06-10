@@ -47,8 +47,8 @@ When you want to start a new budget period, reset accumulated spend:
 # Interactive prompt
 bash budget-reset.sh
 
-# Non-interactive (e.g. in a script or cron job)
-bash budget-reset.sh --yes
+# Non-interactive (e.g. in a script or cron job); -y is a short alias for --yes
+bash budget-reset.sh --yes   # or: bash budget-reset.sh -y
 ```
 
 This clears `~/.claude/budget-gauge/spend.json`, resetting the gauge to $0.

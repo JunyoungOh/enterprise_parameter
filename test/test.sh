@@ -181,6 +181,31 @@ test_reset() {
 }
 test_reset
 
+# ---- Test: interactive 'y' confirm clears spend ----
+test_reset_interactive_yes() {
+  echo "test_reset_interactive_yes"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  run_gauge "$d" '{"session_id":"a","cost":{"total_cost_usd":40.00}}' >/dev/null
+  echo "y" | BUDGET_GAUGE_DIR="$d" bash "$HERE/../budget-reset.sh" >/dev/null
+  local out; out=$(run_gauge "$d" '{"session_id":"b","cost":{"total_cost_usd":3.00}}')
+  assert_contains "interactive y clears to \$3" '$3.00/$100' "$out"
+  rm -rf "$d"
+}
+
+# ---- Test: interactive abort keeps spend ----
+test_reset_interactive_abort() {
+  echo "test_reset_interactive_abort"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  run_gauge "$d" '{"session_id":"a","cost":{"total_cost_usd":40.00}}' >/dev/null
+  echo "n" | BUDGET_GAUGE_DIR="$d" bash "$HERE/../budget-reset.sh" >/dev/null
+  local out; out=$(run_gauge "$d" '{"session_id":"a","cost":{"total_cost_usd":40.00}}')
+  assert_contains "abort keeps \$40" '$40.00/$100' "$out"
+  rm -rf "$d"
+}
+
+test_reset_interactive_yes
+test_reset_interactive_abort
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
