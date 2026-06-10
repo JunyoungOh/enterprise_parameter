@@ -169,6 +169,18 @@ test_no_model_no_cost() {
 test_malformed_json
 test_no_model_no_cost
 
+# ---- Test: reset clears accumulated spend ----
+test_reset() {
+  echo "test_reset"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  run_gauge "$d" '{"session_id":"a","cost":{"total_cost_usd":40.00}}' >/dev/null
+  BUDGET_GAUGE_DIR="$d" bash "$HERE/../budget-reset.sh" --yes >/dev/null
+  local out; out=$(run_gauge "$d" '{"session_id":"b","cost":{"total_cost_usd":3.00}}')
+  assert_contains "after reset only new \$3" '$3.00/$100' "$out"
+  rm -rf "$d"
+}
+test_reset
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
