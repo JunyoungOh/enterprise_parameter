@@ -9,11 +9,9 @@
 
 ## Install
 
-> Replace `<your-org>` with the actual GitHub org/user once published.
-
 ```bash
-git clone https://github.com/<your-org>/claude-budget-gauge.git
-cd claude-budget-gauge
+git clone https://github.com/JunyoungOh/enterprise_parameter.git
+cd enterprise_parameter
 bash install.sh
 ```
 
@@ -46,8 +44,8 @@ BUDGET=100
 When you want to start a new budget period, reset accumulated spend:
 
 ```bash
-bash ~/path/to/claude-budget-gauge/budget-reset.sh        # prompts y/N
-bash ~/path/to/claude-budget-gauge/budget-reset.sh --yes  # or -y, no prompt
+bash ~/path/to/enterprise_parameter/budget-reset.sh        # prompts y/N
+bash ~/path/to/enterprise_parameter/budget-reset.sh --yes  # or -y, no prompt
 ```
 
 Run it from wherever the repo is cloned (use the full path, or add the script to your PATH / a shell alias).
