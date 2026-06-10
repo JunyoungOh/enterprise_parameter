@@ -238,6 +238,85 @@ test_gauge_render_basic
 test_gauge_render_no_newline
 test_gauge_total
 
+BUDGETCMD="$HERE/../budget"
+# ---- budget status ----
+test_budget_status() {
+  echo "test_budget_status"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  printf '%s' '{"a":18.4,"b":5}' > "$d/spend.json"
+  local out; out=$(BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD" status)
+  assert_eq "status renders gauge" '💰 $23.40/$100 ▓▓░░░░░░░░ 23%' "$out"
+  rm -rf "$d"
+}
+test_budget_status_default() {
+  echo "test_budget_status_default"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  printf '%s' '{"a":18.4,"b":5}' > "$d/spend.json"
+  local out; out=$(BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD")
+  assert_eq "no-arg = status" '💰 $23.40/$100 ▓▓░░░░░░░░ 23%' "$out"
+  rm -rf "$d"
+}
+test_budget_status_no_budget() {
+  echo "test_budget_status_no_budget"
+  local d; d=$(new_dir)
+  local out; out=$(BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD" status)
+  assert_contains "guides when unset" 'No budget set' "$out"
+  rm -rf "$d"
+}
+# ---- budget set ----
+test_budget_set_writes_only_budget() {
+  echo "test_budget_set_writes_only_budget"
+  local d; d=$(new_dir)
+  printf '%s\n' '# my config' 'BUDGET=100' 'CURRENCY_SYMBOL=$' > "$d/config"
+  BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD" set 50 >/dev/null
+  assert_contains "BUDGET updated" 'BUDGET=50' "$(cat "$d/config")"
+  assert_contains "comment preserved" '# my config' "$(cat "$d/config")"
+  assert_contains "other key preserved" 'CURRENCY_SYMBOL=$' "$(cat "$d/config")"
+  assert_eq "single BUDGET line" '1' "$(grep -c '^BUDGET=' "$d/config")"
+  rm -rf "$d"
+}
+test_budget_set_creates_config() {
+  echo "test_budget_set_creates_config"
+  local d; d=$(new_dir)
+  BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD" set 75 >/dev/null
+  assert_contains "config created with BUDGET" 'BUDGET=75' "$(cat "$d/config")"
+  rm -rf "$d"
+}
+test_budget_set_appends_when_missing_line() {
+  echo "test_budget_set_appends_when_missing_line"
+  local d; d=$(new_dir)
+  printf '%s\n' '# only a comment' 'BAR_WIDTH=12' > "$d/config"
+  BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD" set 60 >/dev/null
+  assert_contains "BUDGET appended" 'BUDGET=60' "$(cat "$d/config")"
+  assert_contains "existing line kept" 'BAR_WIDTH=12' "$(cat "$d/config")"
+  rm -rf "$d"
+}
+test_budget_set_rejects_bad() {
+  echo "test_budget_set_rejects_bad"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  if BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD" set abc >/dev/null 2>&1; then FAIL=$((FAIL+1)); echo "  FAIL: accepted non-number"; else PASS=$((PASS+1)); echo "  ok: rejects non-number"; fi
+  if BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD" set 0 >/dev/null 2>&1; then FAIL=$((FAIL+1)); echo "  FAIL: accepted zero"; else PASS=$((PASS+1)); echo "  ok: rejects zero"; fi
+  assert_contains "config unchanged" 'BUDGET=100' "$(cat "$d/config")"
+  rm -rf "$d"
+}
+# ---- budget reset ----
+test_budget_reset() {
+  echo "test_budget_reset"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  printf '%s' '{"a":40}' > "$d/spend.json"
+  BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD" reset --yes >/dev/null
+  assert_eq "reset clears to 0" '0' "$(. "$HERE/../gauge-lib.sh"; gauge_total "$d/spend.json")"
+  rm -rf "$d"
+}
+test_budget_status
+test_budget_status_default
+test_budget_status_no_budget
+test_budget_set_writes_only_budget
+test_budget_set_creates_config
+test_budget_set_appends_when_missing_line
+test_budget_set_rejects_bad
+test_budget_reset
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# budget — manage the claude-budget-gauge: status / set / reset.
+
+# Resolve real script dir even if invoked via a symlink (e.g. ~/.local/bin/budget).
+src="$0"
+while [ -L "$src" ]; do
+  d="$(cd "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  case "$src" in /*) ;; *) src="$d/$src" ;; esac
+done
+HERE="$(cd "$(dirname "$src")" && pwd)"
+
+DIR="${BUDGET_GAUGE_DIR:-$HOME/.claude/budget-gauge}"
+CONFIG="$DIR/config"
+SPEND="$DIR/spend.json"
+EXAMPLE="$HERE/budget.conf.example"
+LIB="$HERE/gauge-lib.sh"
+
+command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required." >&2; exit 1; }
+# shellcheck disable=SC1090
+[ -f "$LIB" ] && . "$LIB"
+command -v gauge_render >/dev/null 2>&1 || { echo "ERROR: gauge-lib.sh missing next to budget." >&2; exit 1; }
+
+read_config() { BUDGET=""; CURRENCY_SYMBOL='$'; BAR_WIDTH=10; [ -f "$CONFIG" ] && . "$CONFIG"; }
+
+cmd_status() {
+  read_config
+  local total; total=$(gauge_total "$SPEND")
+  case "${BUDGET:-}" in
+    ''|*[!0-9.]*) echo "No budget set. Run: budget set <amount>"; return 0 ;;
+  esac
+  local line
+  if line=$(gauge_render "$total" "$BUDGET" "$BAR_WIDTH" "$CURRENCY_SYMBOL"); then
+    printf '%s\n' "$line"
+  else
+    echo "ERROR: could not render gauge (is awk installed?)" >&2; return 1
+  fi
+}
+
+cmd_set() {
+  local amt="${1:-}"
+  case "$amt" in ''|*[!0-9.]*|*.*.*) echo "ERROR: budget must be a positive number" >&2; exit 1 ;; esac
+  awk -v a="$amt" 'BEGIN{ exit !(a+0>0) }' || { echo "ERROR: budget must be a positive number" >&2; exit 1; }
+  mkdir -p "$DIR"
+  if [ ! -f "$CONFIG" ]; then
+    cp "$EXAMPLE" "$CONFIG" 2>/dev/null || printf 'BUDGET=%s\n' "$amt" > "$CONFIG"
+  fi
+  local tmp; tmp=$(mktemp "$DIR/.config.XXXXXX" 2>/dev/null) || { echo "ERROR: mktemp failed" >&2; exit 1; }
+  if grep -q '^BUDGET=' "$CONFIG"; then
+    awk -v a="$amt" '/^BUDGET=/{ print "BUDGET=" a; next } { print }' "$CONFIG" > "$tmp"
+  else
+    cat "$CONFIG" > "$tmp"; printf 'BUDGET=%s\n' "$amt" >> "$tmp"
+  fi
+  if mv -f "$tmp" "$CONFIG"; then echo "Budget set to \$$amt."
+  else rm -f "$tmp"; echo "ERROR: could not write $CONFIG" >&2; exit 1; fi
+}
+
+cmd_reset() {
+  local yes=""
+  case "${1:-}" in --yes|-y) yes=1 ;; esac
+  if [ -z "$yes" ]; then
+    printf 'Reset budget gauge to $0? This clears %s [y/N] ' "$SPEND"
+    read -r ans
+    case "$ans" in y|Y|yes|YES) ;; *) echo "Aborted."; exit 0 ;; esac
+  fi
+  mkdir -p "$DIR"
+  if echo '{}' > "$SPEND"; then echo "Budget gauge reset. Spend is now \$0."
+  else echo "ERROR: Could not write to $SPEND" >&2; exit 1; fi
+}
+
+cmd_help() {
+  cat <<'EOF'
+budget — manage your claude-budget-gauge
+
+Usage:
+  budget [status]        Show current spend vs budget (default)
+  budget set <amount>    Set your budget in USD (e.g. budget set 100)
+  budget reset [--yes]   Reset accumulated spend to $0  (-y to skip confirm)
+  budget help            Show this help
+EOF
+}
+
+case "${1:-status}" in
+  status)         cmd_status ;;
+  set)            shift; cmd_set "${1:-}" ;;
+  reset)          shift; cmd_reset "${1:-}" ;;
+  help|-h|--help) cmd_help ;;
+  *) echo "Unknown command: ${1:-}" >&2; cmd_help; exit 1 ;;
+esac
