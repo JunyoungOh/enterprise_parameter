@@ -39,6 +39,31 @@ test_tier1_cost() {
 
 test_tier1_cost
 
+# ---- Test: tier-2 fallback for opus when .cost absent ----
+test_tier2_opus() {
+  echo "test_tier2_opus"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  # 1,000,000 input tokens @ $15/1M = $15.00 exactly
+  local json='{"session_id":"s2","model":{"id":"claude-opus-4-8"},"context_window":{"total_input_tokens":1000000,"total_output_tokens":0,"current_usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}'
+  local out; out=$(run_gauge "$d" "$json")
+  assert_contains "opus 1M in = \$15.00" '$15.00/$100' "$out"
+  assert_contains "15%" '15%' "$out"
+  rm -rf "$d"
+}
+
+# ---- Test: unknown model + no cost -> hidden (empty) ----
+test_unknown_model_hidden() {
+  echo "test_unknown_model_hidden"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  local json='{"session_id":"s3","model":{"id":"some-other-model"},"context_window":{"total_input_tokens":1000000}}'
+  local out; out=$(run_gauge "$d" "$json")
+  assert_empty "unknown model hides segment" "$out"
+  rm -rf "$d"
+}
+
+test_tier2_opus
+test_unknown_model_hidden
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

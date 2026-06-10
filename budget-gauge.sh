@@ -32,8 +32,23 @@ key="${session_id:-unknown}"
 # --- this session's cost: tier 1 = CC official value ---
 this_cost=$(printf '%s' "$input" | jq -r '.cost.total_cost_usd // empty' 2>/dev/null)
 
-# (tier-2 fallback added in Task 4)
-[ -z "$this_cost" ] && exit 0
+if [ -z "$this_cost" ]; then
+  model=$(printf '%s' "$input" | jq -r '.model.id // .model.display_name // empty' 2>/dev/null)
+  case "$model" in
+    *opus*)   pin=15.00; pout=75.00; pcw=18.75; pcr=1.50 ;;
+    *sonnet*) pin=3.00;  pout=15.00; pcw=3.75;  pcr=0.30 ;;
+    *haiku*)  pin=1.00;  pout=5.00;  pcw=1.25;  pcr=0.10 ;;
+    *)        exit 0 ;;   # unknown model + no cost -> hide, never show false 0
+  esac
+  toks=$(printf '%s' "$input" | jq -r '
+    [ (.context_window.total_input_tokens // 0),
+      (.context_window.total_output_tokens // 0),
+      (.context_window.current_usage.cache_creation_input_tokens // 0),
+      (.context_window.current_usage.cache_read_input_tokens // 0) ] | @tsv' 2>/dev/null)
+  this_cost=$(printf '%s' "$toks" | awk -v pi="$pin" -v po="$pout" -v pcw="$pcw" -v pcr="$pcr" \
+    '{ printf "%.6f", $1/1e6*pi + $2/1e6*po + $3/1e6*pcw + $4/1e6*pcr }')
+  [ -z "$this_cost" ] && exit 0
+fi
 
 # --- idempotent spend update: overwrite this session's entry, then sum ---
 mkdir -p "$DIR"
