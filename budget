@@ -17,6 +17,7 @@ EXAMPLE="$HERE/budget.conf.example"
 LIB="$HERE/gauge-lib.sh"
 
 command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required." >&2; exit 1; }
+command -v awk >/dev/null 2>&1 || { echo "ERROR: awk is required." >&2; exit 1; }
 # shellcheck disable=SC1090
 [ -f "$LIB" ] && . "$LIB"
 command -v gauge_render >/dev/null 2>&1 || { echo "ERROR: gauge-lib.sh missing next to budget." >&2; exit 1; }
@@ -27,7 +28,7 @@ cmd_status() {
   read_config
   local total; total=$(gauge_total "$SPEND")
   case "${BUDGET:-}" in
-    ''|*[!0-9.]*) echo "No budget set. Run: budget set <amount>"; return 0 ;;
+    ''|*[!0-9.]*|*.*.*) echo "No budget set. Run: budget set <amount>"; return 0 ;;
   esac
   local line
   if line=$(gauge_render "$total" "$BUDGET" "$BAR_WIDTH" "$CURRENCY_SYMBOL"); then

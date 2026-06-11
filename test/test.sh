@@ -299,6 +299,13 @@ test_budget_set_rejects_bad() {
   assert_contains "config unchanged" 'BUDGET=100' "$(cat "$d/config")"
   rm -rf "$d"
 }
+test_budget_status_fresh() {
+  echo "test_budget_status_fresh"
+  local d; d=$(new_dir); set_budget 100 "$d"
+  local out; out=$(BUDGET_GAUGE_DIR="$d" bash "$BUDGETCMD" status)
+  assert_eq "fresh state shows \$0.00" '💰 $0.00/$100 ░░░░░░░░░░ 0%' "$out"
+  rm -rf "$d"
+}
 # ---- budget reset ----
 test_budget_reset() {
   echo "test_budget_reset"
@@ -315,6 +322,7 @@ test_budget_set_writes_only_budget
 test_budget_set_creates_config
 test_budget_set_appends_when_missing_line
 test_budget_set_rejects_bad
+test_budget_status_fresh
 test_budget_reset
 
 echo "----"

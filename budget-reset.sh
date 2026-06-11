@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
 # Deprecated: use `budget reset`. Kept for backwards compatibility.
-HERE="$(cd "$(dirname "$0")" && pwd)"
+src="$0"
+while [ -L "$src" ]; do
+  d="$(cd "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  case "$src" in /*) ;; *) src="$d/$src" ;; esac
+done
+HERE="$(cd "$(dirname "$src")" && pwd)"
 exec "$HERE/budget" reset "$@"
