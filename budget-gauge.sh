@@ -28,7 +28,7 @@ input=$(cat)
 BUDGET=""; CURRENCY_SYMBOL='$'; BAR_WIDTH=10
 # shellcheck disable=SC1090
 [ -f "$CONFIG" ] && . "$CONFIG"
-case "${BUDGET:-}" in ''|*[!0-9.]*) exit 0 ;; esac   # unset/non-numeric -> silent
+case "${BUDGET:-}" in ''|*[!0-9.]*|*.*.*) exit 0 ;; esac   # unset/non-numeric/multi-dot -> silent
 
 session_id=$(printf '%s' "$input" | jq -r '.session_id // empty' 2>/dev/null)
 key="${session_id:-unknown}"
