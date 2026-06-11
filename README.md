@@ -21,6 +21,7 @@ bash install.sh
 |------|---------|
 | `~/.claude/budget-gauge/config` | Your budget settings (edit `BUDGET` here) |
 | `~/.claude/budget-gauge/spend.json` | Accumulated session costs (auto-managed) |
+| `~/.claude/commands/budget.md` | The `/budget` slash command (created if absent) |
 
 It also writes `statusLine` into `~/.claude/settings.json` so the gauge appears automatically in every Claude Code session.
 
@@ -42,7 +43,7 @@ BUDGET=100
 You can also change the budget at any time from the terminal:
 
 ```bash
-/path/to/enterprise_parameter/budget set 50
+<repo>/budget set 50
 ```
 
 Or, inside a Claude Code session, use the `/budget` slash command (see [Natural language inside Claude Code](#natural-language-inside-claude-code)):
@@ -67,8 +68,8 @@ Or, inside a Claude Code session, use the `/budget` slash command (see [Natural 
 When you want to start a new budget period, reset accumulated spend:
 
 ```bash
-/path/to/enterprise_parameter/budget reset        # prompts y/N
-/path/to/enterprise_parameter/budget reset --yes  # or -y, no prompt
+<repo>/budget reset        # prompts y/N
+<repo>/budget reset --yes  # or -y, no prompt
 ```
 
 This clears `~/.claude/budget-gauge/spend.json`, resetting the gauge to $0.

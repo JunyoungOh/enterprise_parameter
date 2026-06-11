@@ -68,7 +68,12 @@ case ":$PATH:" in
     if [ -e "$HOME/.local/bin/budget" ]; then
       echo "• ~/.local/bin/budget already exists — not touching it. Use: $REPO/budget"
     else
-      ln -s "$REPO/budget" "$HOME/.local/bin/budget" && echo "• Linked 'budget' into ~/.local/bin (try: budget status)"
+      mkdir -p "$HOME/.local/bin"
+      if ln -s "$REPO/budget" "$HOME/.local/bin/budget" 2>/dev/null; then
+        echo "• Linked 'budget' into ~/.local/bin (try: budget status)"
+      else
+        echo "• Could not link into ~/.local/bin — run 'budget' as: $REPO/budget"
+      fi
     fi
     ;;
   *)
