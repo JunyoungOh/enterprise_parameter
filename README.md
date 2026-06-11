@@ -67,6 +67,23 @@ bash install.sh
 
 세션별로 추적해 누적합니다(같은 세션을 다시 처리하면 합산이 아니라 **덮어쓰기 = 멱등**이라 중복 집계되지 않음). 1순위로 Claude Code가 제공하는 실제 비용값(`.cost.total_cost_usd`)을 사용하고, 없으면 사용 모델별 토큰 단가표로 환산합니다. 둘 다 불가하면 잘못된 $0 대신 게이지를 숨깁니다.
 
+### ⏱️ 게이지 기준점 — "마지막 리셋"부터 누적 (꼭 이해하세요)
+
+게이지는 **사용량을 마지막으로 리셋한 시점(또는 처음 설치한 시점)부터** 쌓인 비용만 잽니다. 그 이전에 엔터프라이즈 배정액을 얼마나 썼는지는 이 도구가 알 수 없습니다. 즉 게이지는 "실제 배정액 잔량"을 그대로 따라가는 게 아니라, **내가 리셋한 순간을 0으로 삼아 거기서부터의 누적**을 보여줍니다.
+
+그래서:
+
+- **처음 설치한 직후**에는 게이지가 0에서 시작하므로, 이미 배정액을 일부 쓴 상태라면 게이지가 실제 소진 비율보다 **낮게** 표시될 수 있습니다 — 이 시점엔 게이지와 실제 사용량이 어긋날 수 있습니다.
+- 게이지를 실제 배정액과 정확히 일치시키려면, **배정액이 새로 리젠/충전되는 바로 그 시점에 게이지도 함께 리셋**하세요:
+
+  ```bash
+  budget reset --yes     # 또는 Claude Code 안에서: /budget 리셋
+  ```
+
+  이렇게 하면 "게이지가 세는 기간 = 배정액 주기"가 맞아떨어져서, 그 이후로는 **소진 절대값($)과 게이지(%)를 둘 다** 정확하게 함께 확인할 수 있습니다.
+
+> **권장 습관:** 배정액을 새로 받을 때마다 `budget reset`을 한 세트로 같이 실행하세요. 그러면 게이지가 항상 실제 사용량과 동기화됩니다.
+
 ### 프라이버시
 
 모두 로컬에서 동작합니다 — 네트워크 호출도, 텔레메트리도 없습니다. 누적 소진액은 `~/.claude/budget-gauge/spend.json`에만 저장됩니다(git 추적 제외).
@@ -158,6 +175,8 @@ When you want to start a new budget period, reset accumulated spend:
 ```
 
 This clears `~/.claude/budget-gauge/spend.json`, resetting the gauge to $0.
+
+**Why this matters — the gauge counts from your last reset.** The gauge measures only the spend accumulated *since you last reset it* (or since you first installed it). It does not know how much of your enterprise allotment you spent before that point, so right after first install the gauge can read **lower** than your true usage. To keep the gauge aligned with reality, **reset it at the exact moment your allotment is regenerated/topped up** — then "the gauge's window = your allotment period," and both the absolute dollar amount and the percentage stay accurate. Make `budget reset` a habit each time you receive a fresh allotment.
 
 > **Note:** `budget-reset.sh` is a deprecated shim; use `budget reset` instead.
 
