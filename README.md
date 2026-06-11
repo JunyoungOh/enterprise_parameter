@@ -1,6 +1,91 @@
 # claude-budget-gauge
 
+> 🇰🇷 한국어 안내가 먼저 나옵니다 · 🇺🇸 English documentation follows below ([jump to English](#english)).
+
+## 한국어 안내
+
+`claude-budget-gauge`는 개발자 본인이 **Claude Code CLI 하단바(statusLine)에서, 지금까지 쓴 비용을 API 단가로 환산했을 때 내 배정액의 몇 %인지**를 실시간 게이지로 보는 가벼운 도구입니다. 사내에서 1회당 **$100 / $50**씩 배정받아 쓰는 사람을 위해 만들었습니다.
+
+공식 Claude 대시보드는 월 단위·관리자 전용이고, `ccusage` 같은 도구는 비용을 "보고"만 할 뿐 *내가 정한 예산 대비 게이지*와 *수동 리셋*이 없습니다. 이 도구가 그 빈틈을 채웁니다.
+
+### ⚡ 가장 쉬운 설치 — Claude Code에게 맡기기
+
+설치법을 몰라도 됩니다. **Claude Code 세션에 이 저장소 링크를 붙여넣고** 이렇게 말하세요:
+
+> 이 저장소 설치해줘: https://github.com/JunyoungOh/enterprise_parameter
+> 그리고 내 예산을 100달러로 맞춰줘.
+
+그러면 Claude가 아래 **[Claude용 설치 절차](#claude용-설치-절차-에이전트가-그대로-따라-실행)**를 순서대로 실행합니다. (`jq`가 없으면 설치 명령까지 안내합니다.) 끝나면 새 Claude Code 세션을 열기만 하면 하단바에 게이지가 나타납니다.
+
+#### Claude용 설치 절차 (에이전트가 그대로 따라 실행)
+
+> 이 저장소를 건네받은 Claude는 **추측하지 말고 아래 단계를 순서대로** 실행하세요. 모든 명령은 결정적입니다.
+
+1. **`jq` 확인** — `command -v jq`. 없으면 macOS는 `brew install jq`, Linux는 `sudo apt install jq`(또는 배포판 패키지 매니저)로 설치 안내/실행.
+2. **클론** — `git clone https://github.com/JunyoungOh/enterprise_parameter.git`
+3. **이동** — `cd enterprise_parameter`
+4. **설치** — `bash install.sh` (config·spend.json 생성, `/budget` 슬래시 명령 등록, statusLine 연결 — 기존 statusLine은 덮어쓰지 않음)
+5. **예산 설정** — 사용자가 금액을 말했으면 `bash budget set <금액>`, 말하지 않았으면 기본값 100 유지.
+6. **마무리 안내** — 사용자에게 "새 Claude Code 세션을 열면 하단바에 게이지가 보입니다"라고 알리고, 이후 `/budget` 으로 예산 변경·리셋이 가능함을 안내.
+
+### 수동 설치
+
+```bash
+git clone https://github.com/JunyoungOh/enterprise_parameter.git
+cd enterprise_parameter
+bash install.sh
+```
+
+설치 시 생성되는 것: `~/.claude/budget-gauge/config`(예산 설정), `~/.claude/budget-gauge/spend.json`(누적 비용, 자동 관리), `~/.claude/commands/budget.md`(`/budget` 명령). 그리고 `~/.claude/settings.json`에 statusLine을 연결합니다. **이미 statusLine을 쓰고 있으면 덮어쓰지 않고** 합치는 방법을 출력합니다.
+
+### 예산 설정 / 변경
+
+- **설정 파일**: `~/.claude/budget-gauge/config` 의 `BUDGET=100` ($50 배정이면 50)
+- **터미널**: `budget set 50`
+- **Claude Code 안에서**: `/budget set 50` 또는 자연어로 "예산 50으로 바꿔줘"
+
+### 명령어
+
+| 명령 | 동작 |
+|------|------|
+| `budget` 또는 `budget status` | 현재 소진 게이지를 터미널에 표시 |
+| `budget set <금액>` | 예산(USD) 설정 |
+| `budget reset [--yes\|-y]` | 누적 소진액을 $0으로(배정액 충전); `--yes`/`-y` 없으면 확인 |
+| `/budget …` | Claude Code 안에서 자연어로 — 예: `/budget 예산 반으로 줄여줘`, `/budget 리셋`, `/budget`(상태) |
+
+> `budget`은 `<repo>/budget`으로 실행하거나, `~/.local/bin`이 PATH에 있으면 그냥 `budget`으로 실행합니다(install.sh가 가능하면 심링크를 만들어 줍니다).
+
+### 하단바 표시
+
+```
+💰 $23.40/$100 ▓▓░░░░░░░░ 23%
+```
+
+아이콘: `<75% 💰` · `≥75% 🟠` · `≥90%·초과 🔴`. 초과 시 막대는 꽉 차고 실제 퍼센트(예: `108%`)를 보여줍니다.
+
+### 비용 계산 방식
+
+세션별로 추적해 누적합니다(같은 세션을 다시 처리하면 합산이 아니라 **덮어쓰기 = 멱등**이라 중복 집계되지 않음). 1순위로 Claude Code가 제공하는 실제 비용값(`.cost.total_cost_usd`)을 사용하고, 없으면 사용 모델별 토큰 단가표로 환산합니다. 둘 다 불가하면 잘못된 $0 대신 게이지를 숨깁니다.
+
+### 프라이버시
+
+모두 로컬에서 동작합니다 — 네트워크 호출도, 텔레메트리도 없습니다. 누적 소진액은 `~/.claude/budget-gauge/spend.json`에만 저장됩니다(git 추적 제외).
+
+자세한 영어 문서는 아래에 이어집니다 ↓
+
+---
+
+<a id="english"></a>
+
 `claude-budget-gauge` is a per-developer, real-time CLI gauge that tracks cumulative API-equivalent spend against a self-set allotment (e.g. $100 or $50) and renders it as a bar in the Claude Code `statusLine`. It fills the gap left by official Claude dashboards, which are monthly and admin-only — and by reporting-only tools like `ccusage` that show cost history but do not support a user-defined budget with a manual reset cycle.
+
+## Quick setup with Claude Code
+
+Don't know how to install it? Paste this repo link into a Claude Code session and ask it to set things up:
+
+> Install this repo: https://github.com/JunyoungOh/enterprise_parameter — and set my budget to 100 dollars.
+
+Claude will follow the deterministic steps below: check for `jq`, `git clone`, `cd enterprise_parameter`, `bash install.sh`, then `bash budget set <amount>`. Open a new Claude Code session afterward and the gauge appears in your statusline.
 
 ## Requirements
 
