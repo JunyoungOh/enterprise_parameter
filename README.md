@@ -39,18 +39,55 @@ BUDGET=100
 # BAR_WIDTH=10
 ```
 
+You can also change the budget at any time from the terminal:
+
+```bash
+/path/to/enterprise_parameter/budget set 50
+```
+
+Or, inside a Claude Code session, use the `/budget` slash command (see [Natural language inside Claude Code](#natural-language-inside-claude-code)):
+
+```
+/budget set 50
+```
+
+## Commands
+
+`budget` can be run as `<repo>/budget`, or as `budget` directly if `~/.local/bin` is on your PATH (install.sh sets up the symlink automatically when `~/.local/bin` is on PATH; otherwise it prints an alias suggestion).
+
+| Command | Effect |
+|---------|--------|
+| `budget` or `budget status` | Show the current spend gauge in the terminal |
+| `budget set <amount>` | Set your budget in USD (e.g. `budget set 100`) |
+| `budget reset [--yes\|-y]` | Reset accumulated spend to $0; prompts for confirmation unless `--yes` / `-y` is given |
+| `budget help` | Print usage |
+
 ## Refill / Reset
 
 When you want to start a new budget period, reset accumulated spend:
 
 ```bash
-bash ~/path/to/enterprise_parameter/budget-reset.sh        # prompts y/N
-bash ~/path/to/enterprise_parameter/budget-reset.sh --yes  # or -y, no prompt
+/path/to/enterprise_parameter/budget reset        # prompts y/N
+/path/to/enterprise_parameter/budget reset --yes  # or -y, no prompt
 ```
 
-Run it from wherever the repo is cloned (use the full path, or add the script to your PATH / a shell alias).
-
 This clears `~/.claude/budget-gauge/spend.json`, resetting the gauge to $0.
+
+> **Note:** `budget-reset.sh` is a deprecated shim; use `budget reset` instead.
+
+## Natural language inside Claude Code
+
+`install.sh` registers a `/budget` slash command in `~/.claude/commands/budget.md`. After installing, you can type natural-language requests directly in any Claude Code session:
+
+```
+/budget                          # show current gauge (default)
+/budget set 50                   # set budget to $50
+/budget 예산 반으로 줄여줘        # Claude extracts the number and calls budget set
+/budget reset                    # reset accumulated spend
+/budget status                   # explicit status
+```
+
+Claude interprets the request and runs exactly one of `budget status`, `budget set <amount>`, or `budget reset --yes` — no file editing, no guessing.
 
 ## Compose with an existing statusline
 
